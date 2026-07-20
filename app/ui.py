@@ -228,7 +228,7 @@ class MainWindow:
         preview_frame.rowconfigure(1, weight=1)
         preview_toolbar = ttk.Frame(preview_frame)
         preview_toolbar.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
-        ttk.Button(preview_toolbar, text="清空", command=self.clear_preview).pack(side="right")
+        ttk.Button(preview_toolbar, text="清空", command=self.clear_preview).pack(side="left")
         self.preview = tk.Text(preview_frame, wrap="word", undo=True, font=("Consolas", 11), padx=8, pady=8)
         self.preview.grid(row=1, column=0, sticky="nsew")
         yscroll = ttk.Scrollbar(preview_frame, orient="vertical", command=self.preview.yview)
