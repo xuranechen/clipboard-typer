@@ -1,4 +1,4 @@
-name: Build Clipboard Typer
+name: Build & Release
 
 on:
   push:
@@ -10,34 +10,58 @@ on:
 permissions:
   contents: write
 
+env:
+  PYTHON_VERSION: '3.12'
+
 jobs:
   build:
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyperclip pyautogui pynput pystray Pillow ttkbootstrap pyinstaller
 
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          else
+            SHORT_SHA="${GITHUB_SHA::7}"
+            VERSION="dev-$(date +%Y%m%d)-${SHORT_SHA}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: ${VERSION}"
+
       - name: Run compile check
         run: python -m compileall app main.py
 
       - name: Build exe
+        shell: pwsh
+        env:
+          CLIPBOARD_TYPER_VERSION: ${{ steps.version.outputs.version }}
+          CLIPBOARD_TYPER_BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          CLIPBOARD_TYPER_COMMIT_SHA: ${{ github.sha }}
         run: |
           pyinstaller -F -w -n ClipboardTyper --version-file build\version.txt main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ClipboardTyper
+          name: ClipboardTyper-${{ steps.version.outputs.version }}
           path: dist/ClipboardTyper.exe
 
   release:
@@ -47,23 +71,48 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyperclip pyautogui pynput pystray Pillow ttkbootstrap pyinstaller
 
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Build exe
+        shell: pwsh
+        env:
+          CLIPBOARD_TYPER_VERSION: ${{ steps.version.outputs.version }}
+          CLIPBOARD_TYPER_BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+          CLIPBOARD_TYPER_COMMIT_SHA: ${{ github.sha }}
         run: |
           pyinstaller -F -w -n ClipboardTyper --version-file build\version.txt main.py
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          name: v${{ steps.version.outputs.version }}
           files: dist/ClipboardTyper.exe
           generate_release_notes: true
+          body: |
+            ## Clipboard Typer v${{ steps.version.outputs.version }}
+
+            ### 下载
+            - `ClipboardTyper.exe` — Windows 可执行文件
+
+            ### 构建信息
+            - 版本：`${{ steps.version.outputs.version }}`
+            - 提交：`${{ github.sha }}`

@@ -16,13 +16,14 @@ from app.hotkey import HotkeyManager
 from app.logger import setup_logger
 from app.platform_utils import platform_hint
 from app.typer import ClipboardTyper
+from app.version import get_version_string
 from app.window_target import ClickPosition, WindowInfo, activate_window, click_at_window_position, list_windows, pick_position_relative_to_window
 
 
 class MainWindow:
     def __init__(self) -> None:
         self.root = ttk.Window(themename="litera")
-        self.root.title("Clipboard Typer")
+        self.root.title(f"Clipboard Typer  {get_version_string()}")
         self.root.geometry("980x680")
         self.root.minsize(900, 600)
         self.logger = setup_logger()
@@ -84,6 +85,7 @@ class MainWindow:
         toolbar.grid(row=0, column=0, sticky="ew")
         toolbar.columnconfigure(5, weight=1)
         ttk.Label(toolbar, text="Clipboard Typer", font=("Segoe UI", 12, "bold")).grid(row=0, column=7, sticky="e", padx=(16, 0))
+        ttk.Label(toolbar, text=get_version_string(), font=("Segoe UI", 9)).grid(row=0, column=8, sticky="e", padx=(8, 0))
         ttk.Button(toolbar, text="读取剪贴板", command=self.load_clipboard).grid(row=0, column=0, padx=(0, 8))
         self.start_button = ttk.Button(toolbar, text="开始输入", command=self.start_typing)
         self.start_button.grid(row=0, column=1, padx=(0, 8))
