@@ -1,4 +1,6 @@
 pyperclip
 pyautogui
 pynput
+pystray
+Pillow
 pyinstaller

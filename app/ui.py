@@ -8,6 +8,8 @@ from tkinter import messagebox, ttk
 from app.clipboard import ClipboardError, clear_clipboard, read_clipboard_text
 from app.commands import Command, add_command, delete_command, filter_by_category, get_categories, load_commands, save_commands, update_command
 from app.config import AppConfig, PRESETS, apply_preset, load_config, save_config, validate_config
+from app.history import HistoryEntry, add_history, clear_history, load_history, save_history
+from app.tray import create_tray_icon, run_tray
 from app.hotkey import HotkeyManager
 from app.logger import setup_logger
 from app.platform_utils import platform_hint
@@ -27,6 +29,7 @@ class MainWindow:
         self.hotkey_manager: HotkeyManager | None = None
         self.typing_thread: threading.Thread | None = None
         self.commands = load_commands()
+        self.history = load_history()
         self._cmd_editing_id: str | None = None
 
         self.status_var = tk.StringVar(value="等待")
@@ -40,7 +43,8 @@ class MainWindow:
         self._apply_preview_visibility()
         self._update_runtime_info(self.config)
         self._restart_hotkey_if_needed()
-        self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self._init_tray()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close_request)
 
     def run(self) -> None:
         self.root.mainloop()
@@ -76,16 +80,19 @@ class MainWindow:
 
         toolbar = ttk.Frame(root, padding=(12, 10, 12, 6))
         toolbar.grid(row=0, column=0, sticky="ew")
-        toolbar.columnconfigure(4, weight=1)
-        ttk.Label(toolbar, text="Clipboard Typer", font=("Segoe UI", 12, "bold")).grid(row=0, column=6, sticky="e", padx=(16, 0))
+        toolbar.columnconfigure(5, weight=1)
+        ttk.Label(toolbar, text="Clipboard Typer", font=("Segoe UI", 12, "bold")).grid(row=0, column=7, sticky="e", padx=(16, 0))
         ttk.Button(toolbar, text="读取剪贴板", command=self.load_clipboard).grid(row=0, column=0, padx=(0, 8))
         self.start_button = ttk.Button(toolbar, text="开始输入", command=self.start_typing)
         self.start_button.grid(row=0, column=1, padx=(0, 8))
         self.stop_button = ttk.Button(toolbar, text="停止输入", command=self.stop_typing)
         self.stop_button.grid(row=0, column=2, padx=(0, 16))
-        ttk.Label(toolbar, text="预设").grid(row=0, column=3, sticky="e")
-        ttk.Combobox(toolbar, textvariable=self.preset_var, values=tuple(PRESETS.keys()), width=20, state="readonly").grid(row=0, column=4, sticky="w", padx=(4, 8))
-        ttk.Button(toolbar, text="应用预设", command=self.apply_selected_preset).grid(row=0, column=5)
+        self.next_line_button = ttk.Button(toolbar, text="下一行", command=self._continue_next_line)
+        self.next_line_button.grid(row=0, column=3, padx=(0, 16))
+        self.next_line_button.grid_remove()
+        ttk.Label(toolbar, text="预设").grid(row=0, column=4, sticky="e")
+        ttk.Combobox(toolbar, textvariable=self.preset_var, values=tuple(PRESETS.keys()), width=20, state="readonly").grid(row=0, column=5, sticky="w", padx=(4, 8))
+        ttk.Button(toolbar, text="应用预设", command=self.apply_selected_preset).grid(row=0, column=6)
 
         main = ttk.Frame(root, padding=(12, 0, 12, 8))
         main.grid(row=1, column=0, sticky="nsew")
@@ -113,7 +120,7 @@ class MainWindow:
         ttk.Combobox(input_opts, textvariable=self.tab_policy_var, values=("spaces", "tab", "ignore"), width=12, state="readonly").grid(row=0, column=1, sticky="ew", padx=(8, 0))
         self._spin(input_opts, "Tab 空格", self.tab_spaces_var, 1, 0, 0, 16, 1)
         ttk.Label(input_opts, text="输入模式").grid(row=2, column=0, sticky="w", pady=(6, 0))
-        ttk.Combobox(input_opts, textvariable=self.input_mode_var, values=("fast", "normal", "slow", "line"), width=12, state="readonly").grid(row=2, column=1, sticky="ew", padx=(8, 0), pady=(6, 0))
+        ttk.Combobox(input_opts, textvariable=self.input_mode_var, values=("fast", "normal", "slow", "line", "step_by_step", "adaptive"), width=12, state="readonly").grid(row=2, column=1, sticky="ew", padx=(8, 0), pady=(6, 0))
         ttk.Label(input_opts, text="⚠ 仅支持 ASCII，中文会被过滤", foreground="#cc6600").grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
         behavior = ttk.LabelFrame(settings, text="安全与行为", padding=10)
@@ -173,6 +180,21 @@ class MainWindow:
         ttk.Button(cmd_btn_row, text="编辑", command=self._cmd_edit).pack(side="left", padx=(0, 4))
         ttk.Button(cmd_btn_row, text="删除", command=self._cmd_delete).pack(side="left")
         self._refresh_cmd_list()
+
+        history_frame = ttk.LabelFrame(settings, text="输入历史", padding=10)
+        history_frame.grid(row=6, column=0, sticky="ew", pady=(10, 0))
+        history_frame.columnconfigure(0, weight=1)
+        self.history_listbox = tk.Listbox(history_frame, height=6, font=("Segoe UI", 9))
+        self.history_listbox.grid(row=0, column=0, sticky="ew")
+        history_scroll = ttk.Scrollbar(history_frame, orient="vertical", command=self.history_listbox.yview)
+        history_scroll.grid(row=0, column=1, sticky="ns")
+        self.history_listbox.configure(yscrollcommand=history_scroll.set)
+        self.history_listbox.bind("<Double-1>", lambda _: self._history_fill_preview())
+        history_btn_row = ttk.Frame(history_frame)
+        history_btn_row.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        ttk.Button(history_btn_row, text="填入预览", command=self._history_fill_preview).pack(side="left", padx=(0, 4))
+        ttk.Button(history_btn_row, text="清空历史", command=self._history_clear).pack(side="left")
+        self._refresh_history_list()
 
         preview_frame = ttk.LabelFrame(main, text="文本预览", padding=10)
         preview_frame.grid(row=0, column=1, sticky="nsew")
@@ -235,6 +257,8 @@ class MainWindow:
         save_config(config)
         self.config = config
         self.typer.update_config(config)
+        self.history = add_history(text, self.history)
+        save_history(self.history)
         self.start_button.configure(state="disabled")
         self.progress_var.set(0)
         self.progress_text_var.set(f"0 / {len(processed)}")
@@ -246,6 +270,8 @@ class MainWindow:
         ok = False
         try:
             config = self.config
+            if config.input_mode == "step_by_step":
+                self.root.after(0, lambda: self.next_line_button.grid())
             if config.auto_activate_window and config.target_window_title.strip():
                 self.set_status("正在激活目标窗口...")
                 self.logger.info("activating window=%s click=(%s,%s)", config.target_window_title, config.click_x, config.click_y)
@@ -264,6 +290,7 @@ class MainWindow:
             self.logger.exception("type_failed length=%s", len(text))
             self.set_status(f"发生错误：{exc}")
         finally:
+            self.root.after(0, lambda: self.next_line_button.grid_remove())
             self.root.after(0, lambda: self.start_button.configure(state="normal"))
             if ok:
                 self.root.after(0, self._after_successful_type)
@@ -273,6 +300,10 @@ class MainWindow:
             self.clear_preview()
         if self.config.clear_clipboard_after_type:
             self.clear_system_clipboard()
+
+    def _continue_next_line(self) -> None:
+        self.typer.continue_next_line()
+        self.set_status("继续下一行...")
 
     def clear_preview(self) -> None:
         self.preview.delete("1.0", "end")
@@ -446,6 +477,32 @@ class MainWindow:
         cats = ["全部"] + get_categories(self.commands)
         self.cmd_category_combo["values"] = cats
 
+    def _refresh_history_list(self) -> None:
+        self.history_listbox.delete(0, "end")
+        for entry in self.history:
+            self.history_listbox.insert("end", entry.preview)
+
+    def _history_fill_preview(self) -> None:
+        sel = self.history_listbox.curselection()
+        if not sel:
+            self.set_status("请先选择一条历史记录")
+            return
+        idx = sel[0]
+        if idx >= len(self.history):
+            return
+        entry = self.history[idx]
+        self.preview.delete("1.0", "end")
+        self.preview.insert("1.0", entry.preview)
+        self.set_status(f"已填入历史记录（长度 {entry.length}）")
+
+    def _history_clear(self) -> None:
+        if not messagebox.askyesno("确认", "确定清空所有输入历史？"):
+            return
+        clear_history()
+        self.history = []
+        self._refresh_history_list()
+        self.set_status("历史已清空")
+
     def apply_selected_preset(self) -> None:
         config = apply_preset(self._config_from_ui(), self.preset_var.get())
         self._set_ui_from_config(config)
@@ -532,9 +589,27 @@ class MainWindow:
         self.load_clipboard()
         self.start_typing()
 
+    def _init_tray(self) -> None:
+        self.tray_icon = create_tray_icon(
+            on_show=lambda: self.root.after(0, self._show_window),
+            on_quit=lambda: self.root.after(0, self.close),
+        )
+        run_tray(self.tray_icon)
+
+    def _show_window(self) -> None:
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+
+    def _on_close_request(self) -> None:
+        """关闭窗口时最小化到托盘，而不是退出。"""
+        self.root.withdraw()
+
     def close(self) -> None:
         self.typer.stop()
         if self.hotkey_manager:
             self.hotkey_manager.stop()
         save_config(self._config_from_ui())
+        if self.tray_icon:
+            self.tray_icon.stop()
         self.root.destroy()

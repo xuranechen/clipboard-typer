@@ -74,7 +74,7 @@ def validate_config(data: dict[str, Any]) -> AppConfig:
 
     if config.tab_policy not in {"spaces", "tab", "ignore"}:
         config.tab_policy = "spaces"
-    if config.input_mode not in {"fast", "normal", "slow", "line"}:
+    if config.input_mode not in {"fast", "normal", "slow", "line", "step_by_step", "adaptive"}:
         config.input_mode = "normal"
     if not str(config.hotkey).strip():
         config.hotkey = "ctrl+alt+v"
