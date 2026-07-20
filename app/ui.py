@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from app.clipboard import ClipboardError, clear_clipboard, read_clipboard_text
+from app.commands import Command, add_command, delete_command, filter_by_category, get_categories, load_commands, save_commands, update_command
 from app.config import AppConfig, PRESETS, apply_preset, load_config, save_config, validate_config
 from app.hotkey import HotkeyManager
 from app.logger import setup_logger
@@ -25,6 +26,8 @@ class MainWindow:
         self.typer = ClipboardTyper(self.config)
         self.hotkey_manager: HotkeyManager | None = None
         self.typing_thread: threading.Thread | None = None
+        self.commands = load_commands()
+        self._cmd_editing_id: str | None = None
 
         self.status_var = tk.StringVar(value="等待")
         self.progress_var = tk.DoubleVar(value=0)
@@ -149,6 +152,27 @@ class MainWindow:
         ttk.Spinbox(coord_frame, textvariable=self.click_y_var, from_=-1, to=50000, width=6).grid(row=0, column=3, sticky="ew", padx=(4, 0))
         ttk.Button(target_frame, text="拾取坐标", command=self._pick_click_position).grid(row=3, column=0, columnspan=2, sticky="ew", pady=(6, 0))
         ttk.Checkbutton(target_frame, text="自动激活窗口并点击", variable=self.auto_activate_var, command=self.save_settings).grid(row=4, column=0, columnspan=2, sticky="w", pady=(6, 0))
+
+        cmd_frame = ttk.LabelFrame(settings, text="命令库", padding=10)
+        cmd_frame.grid(row=5, column=0, sticky="ew", pady=(10, 0))
+        cmd_frame.columnconfigure(1, weight=1)
+        ttk.Label(cmd_frame, text="分类").grid(row=0, column=0, sticky="w")
+        self.cmd_category_var = tk.StringVar(value="全部")
+        self.cmd_category_combo = ttk.Combobox(cmd_frame, textvariable=self.cmd_category_var, values=["全部"] + get_categories(self.commands), width=14, state="readonly")
+        self.cmd_category_combo.grid(row=0, column=1, sticky="ew", padx=(8, 0))
+        self.cmd_category_combo.bind("<<ComboboxSelected>>", lambda _: self._refresh_cmd_list())
+        self.cmd_listbox = tk.Listbox(cmd_frame, height=8, font=("Segoe UI", 9))
+        self.cmd_listbox.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        cmd_scroll = ttk.Scrollbar(cmd_frame, orient="vertical", command=self.cmd_listbox.yview)
+        cmd_scroll.grid(row=1, column=2, sticky="ns", pady=(6, 0))
+        self.cmd_listbox.configure(yscrollcommand=cmd_scroll.set)
+        cmd_btn_row = ttk.Frame(cmd_frame)
+        cmd_btn_row.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(6, 0))
+        ttk.Button(cmd_btn_row, text="填入预览", command=self._cmd_fill_preview).pack(side="left", padx=(0, 4))
+        ttk.Button(cmd_btn_row, text="添加", command=self._cmd_add).pack(side="left", padx=(0, 4))
+        ttk.Button(cmd_btn_row, text="编辑", command=self._cmd_edit).pack(side="left", padx=(0, 4))
+        ttk.Button(cmd_btn_row, text="删除", command=self._cmd_delete).pack(side="left")
+        self._refresh_cmd_list()
 
         preview_frame = ttk.LabelFrame(main, text="文本预览", padding=10)
         preview_frame.grid(row=0, column=1, sticky="nsew")
@@ -320,6 +344,107 @@ class MainWindow:
             self.root.after(0, lambda: self.set_status(f"已拾取坐标：({pos.x}, {pos.y})，请保存设置"))
 
         pick_position_relative_to_window(win_info, _apply, lambda msg: self.root.after(0, lambda: self.set_status(msg)), delay_seconds=3)
+
+    def _refresh_cmd_list(self) -> None:
+        self.cmd_listbox.delete(0, "end")
+        category = self.cmd_category_var.get()
+        filtered = filter_by_category(self.commands, category)
+        for cmd in filtered:
+            self.cmd_listbox.insert("end", f"[{cmd.category}] {cmd.name}")
+
+    def _get_selected_command(self) -> Command | None:
+        sel = self.cmd_listbox.curselection()
+        if not sel:
+            return None
+        category = self.cmd_category_var.get()
+        filtered = filter_by_category(self.commands, category)
+        idx = sel[0]
+        if idx >= len(filtered):
+            return None
+        return filtered[idx]
+
+    def _cmd_fill_preview(self) -> None:
+        cmd = self._get_selected_command()
+        if not cmd:
+            self.set_status("请先选择一条命令")
+            return
+        self.preview.delete("1.0", "end")
+        self.preview.insert("1.0", cmd.content)
+        self.set_status(f"已填入：{cmd.name}")
+
+    def _cmd_add(self) -> None:
+        self._cmd_editing_id = None
+        self._open_cmd_dialog("添加命令", "", "通用", "")
+
+    def _cmd_edit(self) -> None:
+        cmd = self._get_selected_command()
+        if not cmd:
+            self.set_status("请先选择一条命令")
+            return
+        self._cmd_editing_id = cmd.id
+        self._open_cmd_dialog("编辑命令", cmd.name, cmd.category, cmd.content)
+
+    def _cmd_delete(self) -> None:
+        cmd = self._get_selected_command()
+        if not cmd:
+            self.set_status("请先选择一条命令")
+            return
+        if not messagebox.askyesno("确认删除", f"确定删除命令「{cmd.name}」？"):
+            return
+        delete_command(self.commands, cmd.id)
+        save_commands(self.commands)
+        self._refresh_cmd_list()
+        self.set_status(f"已删除：{cmd.name}")
+
+    def _open_cmd_dialog(self, title: str, name: str, category: str, content: str) -> None:
+        dlg = tk.Toplevel(self.root)
+        dlg.title(title)
+        dlg.geometry("480x360")
+        dlg.resizable(False, False)
+        dlg.transient(self.root)
+        dlg.grab_set()
+
+        ttk.Label(dlg, text="名称").pack(anchor="w", padx=16, pady=(12, 0))
+        name_var = tk.StringVar(value=name)
+        ttk.Entry(dlg, textvariable=name_var, width=50).pack(fill="x", padx=16)
+
+        ttk.Label(dlg, text="分类").pack(anchor="w", padx=16, pady=(8, 0))
+        cat_var = tk.StringVar(value=category)
+        ttk.Entry(dlg, textvariable=cat_var, width=50).pack(fill="x", padx=16)
+
+        ttk.Label(dlg, text="命令内容").pack(anchor="w", padx=16, pady=(8, 0))
+        content_text = tk.Text(dlg, wrap="word", font=("Consolas", 10), height=10)
+        content_text.pack(fill="both", expand=True, padx=16, pady=(0, 8))
+        content_text.insert("1.0", content)
+
+        def _save() -> None:
+            n = name_var.get().strip()
+            c = cat_var.get().strip()
+            t = content_text.get("1.0", "end-1c").strip()
+            if not n:
+                messagebox.showwarning("提示", "名称不能为空", parent=dlg)
+                return
+            if not t:
+                messagebox.showwarning("提示", "命令内容不能为空", parent=dlg)
+                return
+            if self._cmd_editing_id:
+                update_command(self.commands, self._cmd_editing_id, n, c, t)
+            else:
+                add_command(self.commands, n, c, t)
+            save_commands(self.commands)
+            self._refresh_cmd_list()
+            self._refresh_category_combo()
+            dlg.destroy()
+            self.set_status(f"已保存：{n}")
+
+        btn_row = ttk.Frame(dlg)
+        btn_row.pack(fill="x", padx=16, pady=(0, 12))
+        ttk.Button(btn_row, text="保存", command=_save).pack(side="right", padx=(8, 0))
+        ttk.Button(btn_row, text="取消", command=dlg.destroy).pack(side="right")
+
+    def _refresh_category_combo(self) -> None:
+        cats = ["全部"] + get_categories(self.commands)
+        self.cmd_category_combo["values"] = cats
 
     def apply_selected_preset(self) -> None:
         config = apply_preset(self._config_from_ui(), self.preset_var.get())
