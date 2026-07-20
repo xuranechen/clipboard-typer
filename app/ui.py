@@ -3,7 +3,9 @@ from __future__ import annotations
 import threading
 import time
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 
 from app.clipboard import ClipboardError, clear_clipboard, read_clipboard_text
 from app.commands import Command, add_command, delete_command, filter_by_category, get_categories, load_commands, save_commands, update_command
@@ -19,7 +21,7 @@ from app.window_target import ClickPosition, WindowInfo, activate_window, click_
 
 class MainWindow:
     def __init__(self) -> None:
-        self.root = tk.Tk()
+        self.root = ttk.Window(themename="cosmo")
         self.root.title("Clipboard Typer")
         self.root.geometry("980x680")
         self.root.minsize(900, 600)

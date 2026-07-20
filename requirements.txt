@@ -3,4 +3,5 @@ pyautogui
 pynput
 pystray
 Pillow
+ttkbootstrap
 pyinstaller
