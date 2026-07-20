@@ -11,15 +11,18 @@ from pathlib import Path
 # CI 构建时通过环境变量注入，本地开发时使用默认值
 import os
 
-VERSION = os.environ.get("CLIPBOARD_TYPER_VERSION", "dev")
+VERSION = os.environ.get("CLIPBOARD_TYPER_VERSION", "0.6.0-dev")
 BUILD_DATE = os.environ.get("CLIPBOARD_TYPER_BUILD_DATE", "")
 COMMIT_SHA = os.environ.get("CLIPBOARD_TYPER_COMMIT_SHA", "")
 
 
 def get_version_string() -> str:
     """返回显示用的版本字符串。"""
-    if VERSION != "dev":
+    if VERSION != "dev" and not VERSION.endswith("-dev"):
         return VERSION
+    if VERSION.endswith("-dev"):
+        sha = _get_git_sha()
+        return f"{VERSION}-{sha}"
     sha = _get_git_sha()
     date = _get_build_date()
     return f"dev-{date}-{sha}"
