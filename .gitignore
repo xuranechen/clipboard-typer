@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+*.spec
+
+# 运行时生成
+config.json
+clipboard-typer.log
+start.log
+
+# 文档（开发过程文档，不需要入库）
+docs/
+
+# PyInstaller 构建产物
+build/ClipboardTyper/
+build/ClipboardTyper.exe
+
+# Reasonix 本地工具
+.reasonix/
+
+# 系统文件
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

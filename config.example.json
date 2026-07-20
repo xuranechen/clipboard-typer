@@ -1,0 +1,21 @@
+{
+  "start_delay_ms": 3000,
+  "char_delay_ms": 50,
+  "line_delay_ms": 150,
+  "tab_policy": "spaces",
+  "tab_spaces": 4,
+  "max_length": 10000,
+  "confirm_before_type": true,
+  "show_preview": true,
+  "password_mode": false,
+  "clear_preview_after_type": false,
+  "clear_clipboard_after_type": false,
+  "hotkey": "ctrl+alt+v",
+  "enable_hotkey": false,
+  "esc_to_stop": true,
+  "input_mode": "normal",
+  "target_window_title": "",
+  "click_x": -1,
+  "click_y": -1,
+  "auto_activate_window": false
+}
