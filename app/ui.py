@@ -21,7 +21,7 @@ from app.window_target import ClickPosition, WindowInfo, activate_window, click_
 
 class MainWindow:
     def __init__(self) -> None:
-        self.root = ttk.Window(themename="cosmo")
+        self.root = ttk.Window(themename="litera")
         self.root.title("Clipboard Typer")
         self.root.geometry("980x680")
         self.root.minsize(900, 600)
