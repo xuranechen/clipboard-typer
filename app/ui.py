@@ -104,6 +104,7 @@ class MainWindow:
 
         left_nb = ttk.Notebook(main, width=280)
         left_nb.grid(row=0, column=0, sticky="ns", padx=(0, 10))
+        left_nb.grid_propagate(False)
 
         # ---- Tab 1: 输入设置 ----
         tab_input = ttk.Frame(left_nb, padding=8)
