@@ -50,7 +50,7 @@ jobs:
           CLIPBOARD_TYPER_VERSION: ${{ env.version }}
           CLIPBOARD_TYPER_COMMIT_SHA: ${{ github.sha }}
         run: |
-          pyinstaller -F -w -n ClipboardTyper --version-file build\version.txt main.py
+          pyinstaller -F -w -n ClipboardTyper --version-file build\version.txt --collect-data ttkbootstrap main.py
 
       - name: Changelog
         id: changelog
