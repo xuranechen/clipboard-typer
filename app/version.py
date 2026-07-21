@@ -18,11 +18,12 @@ COMMIT_SHA = os.environ.get("CLIPBOARD_TYPER_COMMIT_SHA", "")
 
 def get_version_string() -> str:
     """返回显示用的版本字符串。"""
-    if VERSION != "dev" and not VERSION.endswith("-dev"):
-        return VERSION
-    if VERSION.endswith("-dev"):
+    ver = VERSION.lstrip("v")
+    if ver != "dev" and not ver.endswith("-dev"):
+        return ver
+    if ver.endswith("-dev"):
         sha = _get_git_sha()
-        return f"{VERSION}-{sha}"
+        return f"{ver}-{sha}"
     sha = _get_git_sha()
     date = _get_build_date()
     return f"dev-{date}-{sha}"

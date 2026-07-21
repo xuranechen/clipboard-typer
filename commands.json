@@ -1,0 +1,289 @@
+[
+  {
+    "id": "67262cf0",
+    "name": "查看磁盘",
+    "category": "Linux",
+    "content": "df -h",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "2afbfb3f",
+    "name": "查看内存",
+    "category": "Linux",
+    "content": "free -h",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "a27c10b3",
+    "name": "查看 CPU",
+    "category": "Linux",
+    "content": "top -bn1 | head -20",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "a6aa6a34",
+    "name": "查看进程",
+    "category": "Linux",
+    "content": "ps aux --sort=-%mem | head -20",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "805874eb",
+    "name": "查看网络连接",
+    "category": "Linux",
+    "content": "ss -tulnp",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "76702567",
+    "name": "查看路由",
+    "category": "Linux",
+    "content": "ip route",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "b908d357",
+    "name": "查看主机名",
+    "category": "Linux",
+    "content": "hostname && uname -a",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "f875a45d",
+    "name": "查看系统时间",
+    "category": "Linux",
+    "content": "date && timedatectl",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "95094b8a",
+    "name": "查看系统日志",
+    "category": "Linux",
+    "content": "journalctl -xe --no-pager | tail -50",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "8e31e8e5",
+    "name": "查看登录用户",
+    "category": "Linux",
+    "content": "who && w",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "19902b3d",
+    "name": "查找大文件",
+    "category": "文件",
+    "content": "find / -type f -size +100M -exec ls -lh {} \\; 2>/dev/null",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "c97a62c3",
+    "name": "查找最近修改",
+    "category": "文件",
+    "content": "find / -type f -mtime -1 -name '*.log' 2>/dev/null",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "6ec9546b",
+    "name": "递归查找文本",
+    "category": "文件",
+    "content": "grep -rn 'TODO' /path/to/dir",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "357f9baa",
+    "name": "统计目录大小",
+    "category": "文件",
+    "content": "du -sh /var/log/*",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "929f2314",
+    "name": "清理 30 天前日志",
+    "category": "文件",
+    "content": "find /var/log -name '*.log' -mtime +30 -delete",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "a50dfd66",
+    "name": "Docker 列表",
+    "category": "Docker",
+    "content": "docker ps -a --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}'",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "06d2eaf8",
+    "name": "Docker 镜像",
+    "category": "Docker",
+    "content": "docker images",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "2726ea6a",
+    "name": "Docker 日志",
+    "category": "Docker",
+    "content": "docker logs --tail 100 -f CONTAINER",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "4f32f9ea",
+    "name": "Docker 清理",
+    "category": "Docker",
+    "content": "docker system prune -af",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "ef2a67ec",
+    "name": "Docker 重启容器",
+    "category": "Docker",
+    "content": "docker restart CONTAINER",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "c25d2657",
+    "name": "Docker 进入容器",
+    "category": "Docker",
+    "content": "docker exec -it CONTAINER /bin/bash",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "04409679",
+    "name": "K8s Pod 列表",
+    "category": "Kubernetes",
+    "content": "kubectl get pods -A -o wide",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "794b9fe6",
+    "name": "K8s 节点状态",
+    "category": "Kubernetes",
+    "content": "kubectl get nodes -o wide",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "e126033f",
+    "name": "K8s 服务列表",
+    "category": "Kubernetes",
+    "content": "kubectl get svc -A",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "26fd3d33",
+    "name": "K8s Pod 日志",
+    "category": "Kubernetes",
+    "content": "kubectl logs -f POD_NAME -n NAMESPACE",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "c0d76598",
+    "name": "K8s 进入 Pod",
+    "category": "Kubernetes",
+    "content": "kubectl exec -it POD_NAME -n NAMESPACE -- /bin/bash",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "bbe613d7",
+    "name": "K8s 事件",
+    "category": "Kubernetes",
+    "content": "kubectl get events -A --sort-by='.lastTimestamp' | tail -20",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "548f4089",
+    "name": "K8s 资源用量",
+    "category": "Kubernetes",
+    "content": "kubectl top pods -A --sort-by=memory",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "d296d512",
+    "name": "测速",
+    "category": "网络",
+    "content": "curl -o /dev/null -s -w '%{speed_download}' http://test.example.com/100mb",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "1747bf3b",
+    "name": "DNS 查询",
+    "category": "网络",
+    "content": "nslookup example.com",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "bc03512f",
+    "name": "端口扫描",
+    "category": "网络",
+    "content": "nc -zv HOST PORT",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "6135769e",
+    "name": "HTTP 头",
+    "category": "网络",
+    "content": "curl -I https://example.com",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "8d7cbbfd",
+    "name": "本机 IP",
+    "category": "网络",
+    "content": "ip addr show | grep 'inet '",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "b58c96ee",
+    "name": "MySQL 连接",
+    "category": "MySQL",
+    "content": "mysql -u root -p -h HOST",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "c7363871",
+    "name": "MySQL 慢查询",
+    "category": "MySQL",
+    "content": "SHOW VARIABLES LIKE 'slow_query%';",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "b71650aa",
+    "name": "MySQL 进程",
+    "category": "MySQL",
+    "content": "SHOW PROCESSLIST;",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "0f9ec600",
+    "name": "MySQL 表大小",
+    "category": "MySQL",
+    "content": "SELECT table_schema, table_name, ROUND(data_length/1024/1024,2) AS 'MB' FROM information_schema.tables ORDER BY data_length DESC LIMIT 20;",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "f346b6c7",
+    "name": "Redis 连接",
+    "category": "Redis",
+    "content": "redis-cli -h HOST -p 6379",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "62e9d128",
+    "name": "Redis 内存",
+    "category": "Redis",
+    "content": "INFO memory",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "6c98861a",
+    "name": "Redis 键数量",
+    "category": "Redis",
+    "content": "DBSIZE",
+    "created_at": 1784536547.5907052
+  },
+  {
+    "id": "1fe1ece1",
+    "name": "Redis 慢日志",
+    "category": "Redis",
+    "content": "SLOWLOG GET 10",
+    "created_at": 1784536547.5907052
+  }
+]

@@ -3,9 +3,6 @@ name: Build & Release
 on:
   push:
     branches: [main]
-    tags: ['v*']
-  pull_request:
-    branches: [main]
 
 permissions:
   contents: write
@@ -17,13 +14,11 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -32,29 +27,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyperclip pyautogui pynput pystray Pillow ttkbootstrap pyinstaller
 
-      - name: Determine version
-        id: version
+      - name: Update version
         shell: bash
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION="${{ github.ref_name }}"
-            VERSION="${VERSION#v}"
-            RELEASE_TAG="${{ github.ref_name }}"
-            RELEASE_NAME="v${VERSION}"
-            PRERELEASE="false"
-          else
-            SHORT_SHA="${GITHUB_SHA::7}"
-            VERSION="0.6.0-dev-$(date +%Y%m%d)-${SHORT_SHA}"
-            RELEASE_TAG="nightly"
-            RELEASE_NAME="Nightly Build"
-            PRERELEASE="true"
-          fi
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "release_name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          BASE="0.6"
+          PATCH=${{ github.run_number }}
+          VERSION="${BASE}.${PATCH}"
+          echo "version=${VERSION}" >> $GITHUB_ENV
           echo "Resolved version: ${VERSION}"
-          echo "Release tag: ${RELEASE_TAG}"
+
+      - name: Inject version into source
+        shell: bash
+        run: |
+          sed -i "s/0.6.0-dev/${{ env.version }}/" app/version.py
 
       - name: Run compile check
         run: python -m compileall app main.py
@@ -62,46 +47,45 @@ jobs:
       - name: Build exe
         shell: pwsh
         env:
-          CLIPBOARD_TYPER_VERSION: ${{ steps.version.outputs.version }}
+          CLIPBOARD_TYPER_VERSION: ${{ env.version }}
           CLIPBOARD_TYPER_COMMIT_SHA: ${{ github.sha }}
         run: |
           pyinstaller -F -w -n ClipboardTyper --version-file build\version.txt main.py
 
-      - name: Rename exe with version
-        shell: pwsh
+      - name: Changelog
+        id: changelog
+        shell: bash
         run: |
-          Copy-Item dist\ClipboardTyper.exe dist\ClipboardTyper-${{ steps.version.outputs.version }}.exe
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            LOG=$(git log --pretty=format:"- %s (%h)" -20)
+          else
+            LOG=$(git log --pretty=format:"- %s (%h)" ${PREV_TAG}..HEAD)
+          fi
+          echo "log<<EOF" >> $GITHUB_OUTPUT
+          echo "$LOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ClipboardTyper-${{ steps.version.outputs.version }}
-          path: |
-            dist/ClipboardTyper.exe
-            dist/ClipboardTyper-${{ steps.version.outputs.version }}.exe
-          retention-days: 30
+      - name: Tag
+        run: |
+          git tag v${{ env.version }}
+          git push origin v${{ env.version }}
 
-      - name: Upload to Release
-        if: github.event_name == 'push'
+      - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.release_tag }}
-          name: ${{ steps.version.outputs.release_name }}
-          target_commitish: ${{ github.sha }}
-          files: |
-            dist/ClipboardTyper.exe
-            dist/ClipboardTyper-${{ steps.version.outputs.version }}.exe
-          prerelease: ${{ steps.version.outputs.prerelease }}
-          make_latest: ${{ startsWith(github.ref, 'refs/tags/v') }}
-          generate_release_notes: true
+          tag_name: v${{ env.version }}
+          name: v${{ env.version }}
           body: |
-            ## Clipboard Typer ${{ steps.version.outputs.release_name }}
+            ## Clipboard Typer v${{ env.version }}
+
+            ### 变更内容
+            ${{ steps.changelog.outputs.log }}
 
             ### 下载
-            - `ClipboardTyper.exe` — 固定文件名，适合直接下载覆盖
-            - `ClipboardTyper-${{ steps.version.outputs.version }}.exe` — 带版本号的构建产物
+            - `ClipboardTyper.exe` — Windows 可执行文件
 
             ### 构建信息
-            - 版本：`${{ steps.version.outputs.version }}`
+            - 版本：`${{ env.version }}`
             - 提交：`${{ github.sha }}`
-            - 来源：`${{ github.ref }}`
+          files: dist/ClipboardTyper.exe
